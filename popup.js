@@ -161,18 +161,18 @@ document.addEventListener('DOMContentLoaded', function() {
             payProgress.value = 0;
             for (var i = 0; i < payCount; i++) {
                 if (i > 0) {
-                    await delay(5000);
+                    await delay(2000);
                 }
                 await gotoPaymentService();
-                await delay(1000);
+                await delay(500);
                 await gotoBillPaymentService();
-                await delay(1000);
+                await delay(500);
                 await gotoBillPaymentForm();
                 await delay(1000);
                 await selectBill();
                 await delay(1000);
                 await fillAmountAndSelectAccount();
-                await delay(5000);
+                await delay(2000);
                 await confirmPayment();
                 await delay(5000);
                 await verifyPayment();
