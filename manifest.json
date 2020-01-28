@@ -1,0 +1,14 @@
+{
+  "manifest_version": 2,
+  "name": "Hang-Seng Paybot",
+  "description": "Pay bills through Hang Seng e-banking as you wish",
+  "version": "1.0",
+  "browser_action": {
+    "default_icon": "icon.png",
+    "default_popup": "popup.html"
+  },
+  "permissions": [
+    "activeTab",
+    "storage"
+  ]
+}
