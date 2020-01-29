@@ -1,6 +1,6 @@
 class HangsengDriver {
     
-    async pay() {
+    async pay(params) {
         await this.gotoPaymentService();
         await this.delay(500);
         await this.gotoBillPaymentService();
@@ -33,13 +33,13 @@ class HangsengDriver {
     async gotoPaymentService() {
         const navClass = await this.executeScript({ code: `
             var paymentServiceNav = document.querySelector('#serviceNavItem-2');
-            if (paymentServiceNav.className.includes("off")) {
+            if (paymentServiceNav.className.includes("off") || !paymentServiceNav.className.includes("on")) {
                 var paymentServiceNavLink = document.querySelector('#serviceNavItem-2 > a');
                 paymentServiceNavLink.click();
             }
             paymentServiceNav.className
         `});
-        if (navClass.includes("off")) {
+        if (!navClass[0] || !(navClass[0].includes("on") || !navClass[0].includes("off"))) {
             throw new Error("Failed to verify payment service selected");
         }
     }
@@ -47,27 +47,31 @@ class HangsengDriver {
     async gotoBillPaymentService() {
         const navClass = await this.executeScript({ code: `
             var billPaymentNav = document.querySelector('#serviceNavItem-2-2');
-            if (billPaymentNav.className.includes("off")) {
+            if (billPaymentNav.className.includes("off") || !billPaymentNav.className.includes("on")) {
                 var billPaymentNavLink = document.querySelector('#serviceNavItem-2-2 a');
                 billPaymentNavLink.click();
             }
             billPaymentNav.className
         `});
-        if (navClass.includes("off")) {
+        if (!navClass[0] || !(navClass[0].includes("on") || !navClass[0].includes("off"))) {
             throw new Error("Failed to verify bill payment service selected");
         }
     }
 
     async gotoBillPaymentForm() {
-        const navClass = await this.executeScript({ code: `
-            var paymentFormNav = document.querySelector('#serviceNavItem-2-2-1');
-            if (paymentFormNav.className.includes("off")) {
-                var paymentFormNavLink = document.querySelector('#serviceNavItem-2-2-1 a');
+        await this.executeScript({ code: `
+            var paymentFormNav = document.querySelector('#serviceNavItem-2-2-2-1, #serviceNavItem-2-2-1');
+            if (paymentFormNav.className.includes("off") || !paymentFormNav.className.includes("on")) {
+                var paymentFormNavLink = document.querySelector('#serviceNavItem-2-2-2-1 a, #serviceNavItem-2-2-1 a');
                 paymentFormNavLink.click();
             }
+        `});
+        await delay(1000);
+        const navClass = await this.executeScript({ code: `
+            var paymentFormNav = document.querySelector('#serviceNavItem-2-2-2-1, #serviceNavItem-2-2-1');
             paymentFormNav.className
         `});
-        if (navClass.includes("off")) {
+        if (!navClass[0] || !(navClass[0].includes("on") || !navClass[0].includes("off"))) {
             throw new Error("Failed to verify bill payment form selected");
         }
     }
@@ -80,7 +84,7 @@ class HangsengDriver {
                 
                 var billOptions = document.querySelectorAll('.commonForm2 .commonForm2 > tbody > tr:nth-child(2) > td:nth-child(2) > div.boxOpened td');
                 for (var i = 0; i < billOptions.length; i++) {
-                    if (billOptions[i].innerText.includes('${payBillInput.value}')) {
+                    if (billOptions[i].innerText.includes('${params.payBill}')) {
                         billOptions[i].click();
                         break;
                     }
@@ -92,14 +96,14 @@ class HangsengDriver {
     async fillAmountAndSelectAccount() {
         return await this.executeScript({ code: `
             var amountInput = document.querySelector('.commonForm2 > tbody > tr:nth-child(3) input');
-            amountInput.value = '${payAmountInput.value}';
+            amountInput.value = '${params.payAmount}';
 
             var accountDropdown = document.querySelector('.commonForm2 > tbody > tr:nth-child(4) div.ui-dropDown-btn');
             accountDropdown.click();
 
             var accountOptions = document.querySelectorAll('.commonForm2 > tbody > tr:nth-child(4) div.boxOpened td')
             for (var i = 0; i < accountOptions.length; i++) {
-                if (accountOptions[i].innerText.includes('${payAccountInput.value}')) {
+                if (accountOptions[i].innerText.includes('${params.payAccount}')) {
                     accountOptions[i].click();
                     break;
                 }

@@ -10,40 +10,75 @@ document.addEventListener('DOMContentLoaded', function() {
     const totalPaidInput = document.getElementById('totalPaidInput');
     const resetButton = document.getElementById('resetButton');
 
-    const storageKeys = [
-        'payBill',
-        'payAccount',
-        'payAmount',
-        'payCount',
-        'totalPaid'
-    ];
+    chrome.runtime.sendMessage({ type: "queryStatus" }, (result) => {
+        payBillInput.value = result.params.payBill;
+        payAccountInput.value = result.params.payAccount;
+        payAmountInput.value = result.params.payAmount;
+        payCountInput.value = result.params.payCount;
+        if (result.currentPayLoop && !result.currentPayLoop.stopped) {
+            payBillInput.disabled = true;
+            payAccountInput.disabled = true;
+            payAmountInput.disabled = true;
+            payCountInput.disabled = true;
+            startButton.disabled = true;
+        } else {
+            payBillInput.disabled = false;
+            payAccountInput.disabled = false;
+            payAmountInput.disabled = false;
+            payCountInput.disabled = false;
+            startButton.disabled = false;
+        }
+        stopButton.disabled = !result.currentPayLoop || (result.currentPayLoop.stopping || result.currentPayLoop.stopped);
+        payProgress.max = result.currentPayLoop ? result.currentPayLoop.payCount : 0;
+        payProgress.value = result.currentPayLoop ? result.currentPayLoop.paymentMade : 0;
+        if (result.currentPayLoop && result.currentPayLoop.errorMessage) {
+            errorText.innerText = result.currentPayLoop.errorMessage;
+            errorText.style.display = '';
+        } else {
+            errorText.innerText = '';
+            errorText.style.display = 'none';
+        }
+        totalPaidInput.value = result.totalPaid.toFixed(2);
 
-    const paymentDriver = new HangsengDriver();
-
-    var totalPaid = 0;
-
-    chrome.storage.sync.get(storageKeys, function(result) {
-        payBillInput.value = result.payBill || '';
-        payAccountInput.value = result.payAccount || '';
-        payAmountInput.value = result.payAmount || '5';
-        payCountInput.value = result.payCount || '1';
-        totalPaid = parseFloat(result.totalPaid || '0');
-        totalPaidInput.value = totalPaid.toFixed(2);
-
-        payBillInput.addEventListener('change', (event) => chrome.storage.sync.set({ payBill: event.target.value }));
-        payAccountInput.addEventListener('change', (event) => chrome.storage.sync.set({ payAccount: event.target.value }));
-        payAmountInput.addEventListener('change', (event) => chrome.storage.sync.set({ payAmount: event.target.value }));
-        payCountInput.addEventListener('change', (event) => chrome.storage.sync.set({ payCount: event.target.value }));
+        payBillInput.addEventListener('change', (event) => {
+            chrome.runtime.sendMessage({ type: "setParams", params: {payBill: event.target.value} }, () => {});
+        })
+        payAccountInput.addEventListener('change', (event) => {
+            chrome.runtime.sendMessage({ type: "setParams", params: {payAccount: event.target.value} }, () => {});
+        })
+        payAmountInput.addEventListener('change', (event) => {
+            chrome.runtime.sendMessage({ type: "setParams", params: {payAmount: event.target.value} }, () => {});
+        })
+        payCountInput.addEventListener('change', (event) => {
+            chrome.runtime.sendMessage({ type: "setParams", params: {payCount: event.target.value} }, () => {});
+        })
     });
 
-    function delay(timeMs) {
-        return new Promise((resolve, reject) => {
-            setTimeout(() => resolve(), timeMs);
-        });
-    }
+    chrome.runtime.onMessage.addListener(function(message, sender, callback) {
+        if (message.type == "update") {
+            payProgress.max = message.payCount;
+            payProgress.value = message.paymentMade;
+            totalPaidInput.value = message.totalPaid.toFixed(2);
+        } else if (message.type == "completed" || message.type == "failed") {
+            payBillInput.disabled = false;
+            payAccountInput.disabled = false;
+            payAmountInput.disabled = false;
+            payCountInput.disabled = false;
+            startButton.disabled = false;
+            stopButton.disabled = true;
+
+            if (message.type == "failed") {
+                errorText.innerText = message.errorMessage;
+                errorText.style.display = '';
+            }
+        }
+    });
 
     startButton.addEventListener('click', async function() {
         event.preventDefault();
+
+        const payAmount = parseFloat(payAmountInput.value);
+        const payCount = parseInt(payCountInput.value);
 
         payBillInput.disabled = true;
         payAccountInput.disabled = true;
@@ -51,44 +86,28 @@ document.addEventListener('DOMContentLoaded', function() {
         payCountInput.disabled = true;
         startButton.disabled = true;
         stopButton.disabled = false;
-
         errorText.innerText = '';
         errorText.style.display = 'none';
-        try {
-            const payAmount = parseFloat(payAmountInput.value);
-            const payCount = parseInt(payCountInput.value);
-            payProgress.max = payCount;
-            payProgress.value = 0;
-            for (var i = 0; i < payCount; i++) {
-                if (i > 0) {
-                    await delay(2000);
-                }
-                
-                await paymentDriver.pay();
 
-                totalPaid += payAmount;
-                totalPaidInput.value = totalPaid.toFixed(2);
-                payProgress.value = i+1;
-                chrome.storage.sync.set({ totalPaid: totalPaid });
-            }
-        } catch (error) {
-            errorText.innerText = error;
-            errorText.style.display = '';
-        }
+        chrome.runtime.sendMessage({ type: "start", payAmount, payCount }, () => {});
+    });
 
-        payBillInput.disabled = false;
-        payAccountInput.disabled = false;
-        payAmountInput.disabled = false;
-        payCountInput.disabled = false;
-        startButton.disabled = false;
+    stopButton.addEventListener('click', async function() {
+        event.preventDefault();
+
         stopButton.disabled = true;
+
+        chrome.runtime.sendMessage({ type: "stop" }, () => {});
     });
 
     resetButton.addEventListener('click', function() {
         event.preventDefault();
-        totalPaid = 0;
-        totalPaidInput.value = totalPaid.toFixed(2);
-        chrome.storage.sync.set({ totalPaid: totalPaid });
+
+        chrome.runtime.sendMessage({ type: "resetCounter" }, (result) => {
+            if (result.success) {
+                totalPaidInput.value = "0.00";
+            }
+        });
     });
 
 });
