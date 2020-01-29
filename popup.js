@@ -18,6 +18,8 @@ document.addEventListener('DOMContentLoaded', function() {
         'totalPaid'
     ];
 
+    const paymentDriver = new HangsengDriver();
+
     var totalPaid = 0;
 
     chrome.storage.sync.get(storageKeys, function(result) {
@@ -38,108 +40,6 @@ document.addEventListener('DOMContentLoaded', function() {
         return new Promise((resolve, reject) => {
             setTimeout(() => resolve(), timeMs);
         });
-    }
-
-    function executeScript(detail) {
-        return new Promise((resolve, reject) => {
-            chrome.tabs.executeScript(detail, (result) => {
-                resolve(result);
-            });
-        });
-    }
-
-    async function gotoPaymentService() {
-        const navClass = await executeScript({ code: `
-            var paymentServiceNav = document.querySelector('#serviceNavItem-2');
-            if (paymentServiceNav.className.includes("off")) {
-                var paymentServiceNavLink = document.querySelector('#serviceNavItem-2 > a');
-                paymentServiceNavLink.click();
-            }
-            paymentServiceNav.className
-        `});
-        if (navClass.includes("off")) {
-            throw new Error("Failed to verify payment service selected");
-        }
-    }
-
-    async function gotoBillPaymentService() {
-        const navClass = await executeScript({ code: `
-            var billPaymentNav = document.querySelector('#serviceNavItem-2-2');
-            if (billPaymentNav.className.includes("off")) {
-                var billPaymentNavLink = document.querySelector('#serviceNavItem-2-2 a');
-                billPaymentNavLink.click();
-            }
-            billPaymentNav.className
-        `});
-        if (navClass.includes("off")) {
-            throw new Error("Failed to verify bill payment service selected");
-        }
-    }
-
-    async function gotoBillPaymentForm() {
-        const navClass = await executeScript({ code: `
-            var paymentFormNav = document.querySelector('#serviceNavItem-2-2-1');
-            if (paymentFormNav.className.includes("off")) {
-                var paymentFormNavLink = document.querySelector('#serviceNavItem-2-2-1 a');
-                paymentFormNavLink.click();
-            }
-            paymentFormNav.className
-        `});
-        if (navClass.includes("off")) {
-            throw new Error("Failed to verify bill payment form selected");
-        }
-    }
-
-    async function selectBill() {
-        const numReselectLinks = await executeScript({ code: `
-            var billDropdowns = document.querySelectorAll('.commonForm2 .commonForm2 > tbody > tr:nth-child(2) > td:nth-child(2) > div.ui-dropDown-btn');
-            if (billDropdowns.length > 0 && billDropdowns[0].innerText.includes('Please Select')) {
-                billDropdowns[0].click();
-                
-                var billOptions = document.querySelectorAll('.commonForm2 .commonForm2 > tbody > tr:nth-child(2) > td:nth-child(2) > div.boxOpened td');
-                for (var i = 0; i < billOptions.length; i++) {
-                    if (billOptions[i].innerText.includes('${payBillInput.value}')) {
-                        billOptions[i].click();
-                        break;
-                    }
-                }
-            }
-        `});
-    }
-
-    async function fillAmountAndSelectAccount() {
-        return await executeScript({ code: `
-            var amountInput = document.querySelector('.commonForm2 > tbody > tr:nth-child(3) input');
-            amountInput.value = '${payAmountInput.value}';
-
-            var accountDropdown = document.querySelector('.commonForm2 > tbody > tr:nth-child(4) div.ui-dropDown-btn');
-            accountDropdown.click();
-
-            var accountOptions = document.querySelectorAll('.commonForm2 > tbody > tr:nth-child(4) div.boxOpened td')
-            for (var i = 0; i < accountOptions.length; i++) {
-                if (accountOptions[i].innerText.includes('${payAccountInput.value}')) {
-                    accountOptions[i].click();
-                    break;
-                }
-            }
-
-            var continueButton = document.querySelector('a#okBtn');
-            continueButton.click();
-        `});
-    }
-
-    async function confirmPayment() {
-        return await executeScript({ code: `
-            var confirmButton = document.querySelector('a#confirmBtn');
-            confirmButton.click();
-        `});
-    }
-
-    async function verifyPayment() {
-        return await executeScript({ code: `
-            var paymentMessage = document.querySelector('#errorMessage span.blue');
-            paymentMessage.innerText
-        `});
     }
 
     startButton.addEventListener('click', async function() {
@@ -163,19 +63,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (i > 0) {
                     await delay(2000);
                 }
-                await gotoPaymentService();
-                await delay(500);
-                await gotoBillPaymentService();
-                await delay(500);
-                await gotoBillPaymentForm();
-                await delay(1000);
-                await selectBill();
-                await delay(1000);
-                await fillAmountAndSelectAccount();
-                await delay(2000);
-                await confirmPayment();
-                await delay(5000);
-                await verifyPayment();
+                
+                await paymentDriver.pay();
 
                 totalPaid += payAmount;
                 totalPaidInput.value = totalPaid.toFixed(2);
