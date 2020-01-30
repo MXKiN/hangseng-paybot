@@ -76,6 +76,8 @@ async function runPayLoop(payAmount, payCount) {
         paymentMade: 0,
         errorMessage: null
     };
+    chrome.browserAction.setIcon({path:"icon-active.png"});
+
     try {
         chrome.runtime.sendMessage({
             "type": "update",
@@ -115,12 +117,14 @@ async function runPayLoop(payAmount, payCount) {
         currentPayLoop.stopped = true;
         currentPayLoop.stopping = false;
         chrome.runtime.sendMessage({ "type": "completed" });
+        chrome.browserAction.setIcon({path:"icon-idle.png"});
     } catch (error) {
         console.log("Failed in payment", error);
         currentPayLoop.stopped = true;
         currentPayLoop.stopping = false;
         currentPayLoop.errorMessage = error.message;
         chrome.runtime.sendMessage({ "type": "failed", "errorMessage": error.message });
+        chrome.browserAction.setIcon({path:"icon-idle.png"});
         throw error;
     }
 }
