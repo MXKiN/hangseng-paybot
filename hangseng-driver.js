@@ -1,5 +1,13 @@
 class HangsengDriver {
     
+    constructor() {
+        this.tabId = null;
+    }
+
+    setTabId(tabId) {
+        this.tabId = tabId;
+    }
+
     async pay(params) {
         await this.gotoPaymentService();
         await this.delay(500);
@@ -7,9 +15,9 @@ class HangsengDriver {
         await this.delay(500);
         await this.gotoBillPaymentForm();
         await this.delay(1000);
-        await this.selectBill();
+        await this.selectBill(params.payBill);
         await this.delay(1000);
-        await this.fillAmountAndSelectAccount();
+        await this.fillAmountAndSelectAccount(params.payAmount, params.payAccount);
         await this.delay(2000);
         await this.confirmPayment();
         await this.delay(5000);
@@ -24,7 +32,7 @@ class HangsengDriver {
 
     executeScript(detail) {
         return new Promise((resolve, reject) => {
-            chrome.tabs.executeScript(detail, (result) => {
+            chrome.tabs.executeScript(this.tabId, detail, (result) => {
                 resolve(result);
             });
         });
@@ -76,7 +84,7 @@ class HangsengDriver {
         }
     }
 
-    async selectBill() {
+    async selectBill(payBill) {
         const numReselectLinks = await this.executeScript({ code: `
             var billDropdowns = document.querySelectorAll('.commonForm2 .commonForm2 > tbody > tr:nth-child(2) > td:nth-child(2) > div.ui-dropDown-btn');
             if (billDropdowns.length > 0 && billDropdowns[0].innerText.includes('Please Select')) {
@@ -84,7 +92,7 @@ class HangsengDriver {
                 
                 var billOptions = document.querySelectorAll('.commonForm2 .commonForm2 > tbody > tr:nth-child(2) > td:nth-child(2) > div.boxOpened td');
                 for (var i = 0; i < billOptions.length; i++) {
-                    if (billOptions[i].innerText.includes('${params.payBill}')) {
+                    if (billOptions[i].innerText.includes('${payBill}')) {
                         billOptions[i].click();
                         break;
                     }
@@ -93,17 +101,17 @@ class HangsengDriver {
         `});
     }
 
-    async fillAmountAndSelectAccount() {
+    async fillAmountAndSelectAccount(payAmount, payAccount) {
         return await this.executeScript({ code: `
             var amountInput = document.querySelector('.commonForm2 > tbody > tr:nth-child(3) input');
-            amountInput.value = '${params.payAmount}';
+            amountInput.value = '${payAmount}';
 
             var accountDropdown = document.querySelector('.commonForm2 > tbody > tr:nth-child(4) div.ui-dropDown-btn');
             accountDropdown.click();
 
             var accountOptions = document.querySelectorAll('.commonForm2 > tbody > tr:nth-child(4) div.boxOpened td')
             for (var i = 0; i < accountOptions.length; i++) {
-                if (accountOptions[i].innerText.includes('${params.payAccount}')) {
+                if (accountOptions[i].innerText.includes('${payAccount}')) {
                     accountOptions[i].click();
                     break;
                 }

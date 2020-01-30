@@ -36,6 +36,14 @@ function storageSet(config) {
     });
 }
 
+function getActiveTab() {
+    return new Promise((resolve, reject) => {
+        chrome.tabs.query({currentWindow: true, active: true}, function(tabs) {
+            resolve(tabs[0]);
+        });
+    });
+}
+
 chrome.runtime.onMessage.addListener(function(message, sender, callback) {
     if (message.type == "setParams") {
         storageSet(message.params)
@@ -85,6 +93,9 @@ async function runPayLoop(payAmount, payCount) {
             "paymentMade": currentPayLoop.paymentMade,
             "totalPaid": totalPaid
         });
+
+        const activeTab = await this.getActiveTab();
+        paymentDriver.setTabId(activeTab.id);
 
         for (var i = 0; i < payCount; i++) {
             if (i > 0) {
