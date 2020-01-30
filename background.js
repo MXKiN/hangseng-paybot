@@ -44,39 +44,12 @@ function getActiveTab() {
     });
 }
 
-chrome.runtime.onMessage.addListener(function(message, sender, callback) {
-    if (message.type == "setParams") {
-        storageSet(message.params)
-            .then(() => {
-                callback({ success: true });
-                Object.assign(params, message.params);
-            })
-            .catch((error) => callback({ success: false, error }));
-        return true;
-    } else if (message.type == "start") {
-        runPayLoop(message.payAmount, message.payCount)
-            .then(() => callback({ success: true }))
-            .catch((error) => callback({ success: false, error }));
-        return true;
-    } else if (message.type == "stop") {
-        currentPayLoop.stopping = true;
-        callback({ success: true });
-    } else if (message.type == "queryStatus") {
-        callback({
-            success: true,
-            params,
-            currentPayLoop: currentPayLoop,
-            totalPaid
-        });
-    } else if (message.type == "resetCounter") {
-        resetCounter()
-            .then(() => callback({ success: true }))
-            .catch((error) => callback({ success: false, error }));
-        return true;
-    }
-});
+async function setParams(newParams) {
+    Object.assign(params, newParams);
+    await storageSet(params);
+}
 
-async function runPayLoop(payAmount, payCount) {
+async function start({payAmount, payCount}) {
     currentPayLoop = {
         stopping: false,
         stopped: false,
@@ -89,9 +62,7 @@ async function runPayLoop(payAmount, payCount) {
     try {
         chrome.runtime.sendMessage({
             "type": "update",
-            "payCount": payCount,
             "paymentMade": currentPayLoop.paymentMade,
-            "totalPaid": totalPaid
         });
 
         const activeTab = await this.getActiveTab();
@@ -119,9 +90,7 @@ async function runPayLoop(payAmount, payCount) {
 
             chrome.runtime.sendMessage({
                 "type": "update",
-                "payCount": payCount,
                 "paymentMade": currentPayLoop.paymentMade,
-                "totalPaid": totalPaid
             });
         }
 
@@ -140,7 +109,20 @@ async function runPayLoop(payAmount, payCount) {
     }
 }
 
-function resetCounter() {
+function stop() {
+    currentPayLoop.stopping = true;
+}
+
+function queryStatus() {
+    return({
+        success: true,
+        params,
+        currentPayLoop: currentPayLoop,
+        totalPaid
+    });
+}
+
+async function resetCounter() {
     totalPaid = 0;
-    return storageSet({ totalPaid: totalPaid });
+    await storageSet({ totalPaid: totalPaid });
 }

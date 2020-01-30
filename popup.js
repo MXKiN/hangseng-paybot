@@ -10,7 +10,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const totalPaidInput = document.getElementById('totalPaidInput');
     const resetButton = document.getElementById('resetButton');
 
-    chrome.runtime.sendMessage({ type: "queryStatus" }, (result) => {
+    function updateUi() {
+        const result = chrome.extension.getBackgroundPage().queryStatus();
         payBillInput.value = result.params.payBill;
         payAccountInput.value = result.params.payAccount;
         payAmountInput.value = result.params.payAmount;
@@ -39,75 +40,49 @@ document.addEventListener('DOMContentLoaded', function() {
             errorText.style.display = 'none';
         }
         totalPaidInput.value = result.totalPaid.toFixed(2);
+    }
 
-        payBillInput.addEventListener('change', (event) => {
-            chrome.runtime.sendMessage({ type: "setParams", params: {payBill: event.target.value} }, () => {});
-        })
-        payAccountInput.addEventListener('change', (event) => {
-            chrome.runtime.sendMessage({ type: "setParams", params: {payAccount: event.target.value} }, () => {});
-        })
-        payAmountInput.addEventListener('change', (event) => {
-            chrome.runtime.sendMessage({ type: "setParams", params: {payAmount: event.target.value} }, () => {});
-        })
-        payCountInput.addEventListener('change', (event) => {
-            chrome.runtime.sendMessage({ type: "setParams", params: {payCount: event.target.value} }, () => {});
-        })
-    });
+    updateUi();
 
     chrome.runtime.onMessage.addListener(function(message, sender, callback) {
-        if (message.type == "update") {
-            payProgress.max = message.payCount;
-            payProgress.value = message.paymentMade;
-            totalPaidInput.value = message.totalPaid.toFixed(2);
-        } else if (message.type == "completed" || message.type == "failed") {
-            payBillInput.disabled = false;
-            payAccountInput.disabled = false;
-            payAmountInput.disabled = false;
-            payCountInput.disabled = false;
-            startButton.disabled = false;
-            stopButton.disabled = true;
-
-            if (message.type == "failed") {
-                errorText.innerText = message.errorMessage;
-                errorText.style.display = '';
-            }
+        if (message.type == "update" || message.type == "completed" || message.type == "failed") {
+            updateUi();
         }
     });
+
+    payBillInput.addEventListener('change', (event) => {
+        chrome.extension.getBackgroundPage().setParams({payBill: event.target.value});
+    })
+    payAccountInput.addEventListener('change', (event) => {
+        chrome.extension.getBackgroundPage().setParams({payAccount: event.target.value});
+    })
+    payAmountInput.addEventListener('change', (event) => {
+        chrome.extension.getBackgroundPage().setParams({payAmount: event.target.value});
+    })
+    payCountInput.addEventListener('change', (event) => {
+        chrome.extension.getBackgroundPage().setParams({payCount: event.target.value});
+    })
 
     startButton.addEventListener('click', async function() {
         event.preventDefault();
 
         const payAmount = parseFloat(payAmountInput.value);
         const payCount = parseInt(payCountInput.value);
-
-        payBillInput.disabled = true;
-        payAccountInput.disabled = true;
-        payAmountInput.disabled = true;
-        payCountInput.disabled = true;
-        startButton.disabled = true;
-        stopButton.disabled = false;
-        errorText.innerText = '';
-        errorText.style.display = 'none';
-
-        chrome.runtime.sendMessage({ type: "start", payAmount, payCount }, () => {});
+        chrome.extension.getBackgroundPage().start({payAmount, payCount})
     });
 
     stopButton.addEventListener('click', async function() {
         event.preventDefault();
 
-        stopButton.disabled = true;
-
-        chrome.runtime.sendMessage({ type: "stop" }, () => {});
+        chrome.extension.getBackgroundPage().stop();
+        updateUi();
     });
 
     resetButton.addEventListener('click', function() {
         event.preventDefault();
 
-        chrome.runtime.sendMessage({ type: "resetCounter" }, (result) => {
-            if (result.success) {
-                totalPaidInput.value = "0.00";
-            }
-        });
+        chrome.extension.getBackgroundPage().resetCounter();
+        updateUi();
     });
 
 });
