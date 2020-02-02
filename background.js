@@ -111,7 +111,6 @@ async function start({payAmount, payCount}) {
         currentPayLoop.errorMessage = error.message;
         chrome.runtime.sendMessage({ "type": "failed", "errorMessage": error.message });
         chrome.browserAction.setIcon({path:"icon-idle.png"});
-        throw error;
     }
 }
 
