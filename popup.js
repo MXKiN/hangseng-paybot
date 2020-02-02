@@ -1,5 +1,9 @@
 document.addEventListener('DOMContentLoaded', function() {
-    const payBillInput = document.getElementById('payBillInput');
+    const billTypeSelect = document.getElementById('billTypeSelect');
+    const payeeNameDiv = document.getElementById('payeeNameDiv');
+    const payeeNameInput = document.getElementById('payeeNameInput');
+    const taxAccountNumberDiv = document.getElementById('taxAccountNumberDiv');
+    const taxAccountNumberInput = document.getElementById('taxAccountNumberInput');
     const payAccountInput = document.getElementById('payAccountInput');
     const payAmountInput = document.getElementById('payAmountInput');
     const payCountInput = document.getElementById('payCountInput');
@@ -12,24 +16,25 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function updateUi() {
         const result = chrome.extension.getBackgroundPage().queryStatus();
-        payBillInput.value = result.params.payBill;
+        billTypeSelect.value = result.params.billType;
+        payeeNameInput.value = result.params.payeeName;
+        taxAccountNumberInput.value = result.params.taxAccountNumber;
         payAccountInput.value = result.params.payAccount;
         payAmountInput.value = result.params.payAmount;
         payCountInput.value = result.params.payCount;
-        if (result.currentPayLoop && !result.currentPayLoop.stopped) {
-            payBillInput.disabled = true;
-            payAccountInput.disabled = true;
-            payAmountInput.disabled = true;
-            payCountInput.disabled = true;
-            startButton.disabled = true;
-        } else {
-            payBillInput.disabled = false;
-            payAccountInput.disabled = false;
-            payAmountInput.disabled = false;
-            payCountInput.disabled = false;
-            startButton.disabled = false;
-        }
+        payeeNameDiv.style.display = billTypeSelect.value == 'REGISTERED_PAYEE' ? '' : 'none';
+        taxAccountNumberDiv.style.display = billTypeSelect.value == 'TAX' ? '' : 'none';
+
+        const runningPayLoop = result.currentPayLoop && !result.currentPayLoop.stopped;
+        billTypeSelect.disabled = runningPayLoop;
+        payeeNameInput.disabled = runningPayLoop;
+        taxAccountNumberInput.disabled = runningPayLoop;
+        payAccountInput.disabled = runningPayLoop;
+        payAmountInput.disabled = runningPayLoop;
+        payCountInput.disabled = runningPayLoop;
+        startButton.disabled = runningPayLoop;
         stopButton.disabled = !result.currentPayLoop || (result.currentPayLoop.stopping || result.currentPayLoop.stopped);
+        
         payProgress.max = result.currentPayLoop ? result.currentPayLoop.payCount : 0;
         payProgress.value = result.currentPayLoop ? result.currentPayLoop.paymentMade : 0;
         if (result.currentPayLoop && result.currentPayLoop.errorMessage) {
@@ -50,18 +55,25 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    payBillInput.addEventListener('change', (event) => {
-        chrome.extension.getBackgroundPage().setParams({payBill: event.target.value});
-    })
+    billTypeSelect.addEventListener('change', (event) => {
+        chrome.extension.getBackgroundPage().setParams({billType: event.target.value});
+        updateUi();
+    });
+    payeeNameInput.addEventListener('change', (event) => {
+        chrome.extension.getBackgroundPage().setParams({payeeName: event.target.value});
+    });
+    taxAccountNumberInput.addEventListener('change', (event) => {
+        chrome.extension.getBackgroundPage().setParams({taxAccountNumber: event.target.value});
+    });
     payAccountInput.addEventListener('change', (event) => {
         chrome.extension.getBackgroundPage().setParams({payAccount: event.target.value});
-    })
+    });
     payAmountInput.addEventListener('change', (event) => {
         chrome.extension.getBackgroundPage().setParams({payAmount: event.target.value});
-    })
+    });
     payCountInput.addEventListener('change', (event) => {
         chrome.extension.getBackgroundPage().setParams({payCount: event.target.value});
-    })
+    });
 
     startButton.addEventListener('click', async function() {
         event.preventDefault();

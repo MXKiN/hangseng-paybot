@@ -1,7 +1,9 @@
 const paymentDriver = new HangsengDriver();
 
 const storageKeys = [
-    'payBill',
+    'billType',
+    'payeeName',
+    'taxAccountNumber',
     'payAccount',
     'payAmount',
     'payCount',
@@ -14,7 +16,9 @@ var totalPaid = 0;
 
 chrome.storage.sync.get(storageKeys, function(result) {
     params = {
-        payBill: result.payBill || '',
+        billType: result.billType || 'REGISTERED_PAYEE',
+        payeeName: result.payeeName || '',
+        taxAccountNumber: result.taxAccountNumber || '',
         payAccount: result.payAccount || '',
         payAmount: result.payAmount || 5,
         payCount: result.payCount || 1  
@@ -78,7 +82,9 @@ async function start({payAmount, payCount}) {
             }
 
             await paymentDriver.pay({
-                payBill: params.payBill,
+                billType: params.billType,
+                payeeName: params.payeeName,
+                taxAccountNumber: params.taxAccountNumber,
                 payAccount: params.payAccount,
                 payAmount: params.payAmount
             });
