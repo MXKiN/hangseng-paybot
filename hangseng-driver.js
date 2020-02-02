@@ -8,28 +8,28 @@ class HangsengDriver {
         this.tabId = tabId;
     }
 
-    async pay(params) {
-        await this.gotoPaymentPlatform();
-        await this.delay(500);
-        await this.gotoBillPaymentSection();
-        await this.delay(500);
-        await this.openPayBillsForm();
-        await this.delay(1000);
+    async * createPaymentProcess(params) {
+        yield await this.gotoPaymentPlatform();
+        yield await this.delay(500);
+        yield await this.gotoBillPaymentSection();
+        yield await this.delay(500);
+        yield await this.openPayBillsForm();
+        yield await this.delay(1000);
 
         var amountRowOffset;
         if (params.billType == 'REGISTERED_PAYEE') {
-            await this.selectRegisteredPayeeBill(params.payeeName);
+            yield await this.selectRegisteredPayeeBill(params.payeeName);
             amountRowOffset = 0;
         } else if (params.billType == 'TAX') {
-            await this.selectTaxBill(params.taxAccountNumber);
+            yield await this.selectTaxBill(params.taxAccountNumber);
             amountRowOffset = 1;
         }
-        await this.delay(1000);
-        await this.fillAmountAndSelectAccount(params.payAmount, params.payAccount, amountRowOffset);
-        await this.delay(1000);
-        await this.proceedPayment()
-        await this.delay(2000);
-        await this.confirmPayment();
+        yield await this.delay(1000);
+        yield await this.fillAmountAndSelectAccount(params.payAmount, params.payAccount, amountRowOffset);
+        yield await this.delay(1000);
+        yield await this.proceedPayment()
+        yield await this.delay(2000);
+        yield await this.confirmPayment();
     }
 
     delay(timeMs) {

@@ -81,23 +81,29 @@ async function start({payAmount, payCount}) {
                 break;
             }
 
-            await paymentDriver.pay({
+            var paymentProcess = paymentDriver.createPaymentProcess({
                 billType: params.billType,
                 payeeName: params.payeeName,
                 taxAccountNumber: params.taxAccountNumber,
                 payAccount: params.payAccount,
                 payAmount: params.payAmount
             });
-            
-            currentPayLoop.paymentMade++;
-            
-            totalPaid += payAmount;
-            chrome.storage.sync.set({ totalPaid: totalPaid });
 
-            chrome.runtime.sendMessage({
-                "type": "update",
-                "paymentMade": currentPayLoop.paymentMade,
-            });
+            while (!currentPayLoop.stopping) {
+                var result = await paymentProcess.next();
+                if (result.done) {
+                    currentPayLoop.paymentMade++;
+            
+                    totalPaid += payAmount;
+                    chrome.storage.sync.set({ totalPaid: totalPaid });
+        
+                    chrome.runtime.sendMessage({
+                        "type": "update",
+                        "paymentMade": currentPayLoop.paymentMade,
+                    });        
+                    break;
+                }
+            }
         }
 
         currentPayLoop.stopped = true;
