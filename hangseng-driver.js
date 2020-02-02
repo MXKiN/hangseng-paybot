@@ -207,6 +207,11 @@ class HangsengDriver {
             if (errorHeadings.length > 0) {
                 throw new Error("Error message found in page");
             }
+
+            var systemMessage = document.querySelector('#importantNotes2');
+            if (systemMessage && systemMessage.innerText.length > 0) {
+                throw new Error("Unexpected system message found in page");
+            }
         `);
     }
 
