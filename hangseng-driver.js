@@ -143,7 +143,7 @@ class HangsengDriver {
             }
             filteredOrganizationOptions[0].click();
         `);
-        await delay(1000);
+        await delay(2000);
         await this.executeScript(`
             var billAccountNumberInput = document.querySelector('#contentBox-middle > .commonForm2 > tbody > tr:nth-child(2) input');
             if (!billAccountNumberInput) {
@@ -217,7 +217,7 @@ class HangsengDriver {
 
     async confirmPayment() {
         await this.executeScript(`
-            var confirmButton = document.querySelector('a#confirmBtn');
+            var confirmButton = document.querySelector('.btn-grn-1 a');
             if (!confirmButton) {
                 throw new Error("Confirm button not found in page");
             }
