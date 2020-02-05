@@ -10,11 +10,8 @@ class HangsengDriver {
 
     async * createPaymentProcess(params) {
         yield await this.gotoPaymentPlatform();
-        yield await this.delay(500);
         yield await this.gotoBillPaymentSection();
-        yield await this.delay(500);
         yield await this.openPayBillsForm();
-        yield await this.delay(1000);
 
         var amountRowOffset;
         if (params.billType == 'REGISTERED_PAYEE') {
@@ -24,11 +21,8 @@ class HangsengDriver {
             yield await this.selectTaxBill(params.taxAccountNumber);
             amountRowOffset = 1;
         }
-        yield await this.delay(1000);
         yield await this.fillAmountAndSelectAccount(params.payAmount, params.payAccount, amountRowOffset);
-        yield await this.delay(1000);
         yield await this.proceedPayment()
-        yield await this.delay(2000);
         yield await this.confirmPayment();
     }
 
@@ -38,27 +32,43 @@ class HangsengDriver {
         });
     }
 
-    executeScript(code) {
+    waitForPageUpdate() {
         return new Promise((resolve, reject) => {
-            chrome.tabs.executeScript(this.tabId, { code: `
-                try {
-                    ${code}
-                    null
-                } catch (error) {
-                    error.message
-                }
-            ` }, (scriptErrorMessages) => {
-                if (scriptErrorMessages[0]) {
-                    reject(new Error(scriptErrorMessages[0]));
-                } else {
+            const requiredTabId = this.tabId;
+            function listener(tabId, changeInfo, tab) {
+                if (tabId == requiredTabId && changeInfo.status == 'complete') {
+                    chrome.tabs.onUpdated.removeListener(listener);
                     resolve();
                 }
+            };
+            chrome.tabs.onUpdated.addListener(listener);
+        });
+    }
+
+    executeScript(code) {
+        return new Promise((resolve, reject) => {
+            chrome.tabs.executeScript(this.tabId, { code }, (result) => {
+                resolve(result[0]);
             });
         });
     }
 
+    async executeScriptAndCheckError(code) {
+        const errorMessage = await this.executeScript(`
+            try {
+                ${code}
+                null
+            } catch (error) {
+                error.message
+            }
+        `);
+        if (errorMessage) {
+            throw new Error(errorMessage);
+        }
+    }
+
     async gotoPaymentPlatform() {
-        await this.executeScript(`
+        await this.executeScriptAndCheckError(`
             var paymentPlatformNav = document.querySelector('#serviceNavItem-2');
             if (!paymentPlatformNav) {
                 throw new Error("Payment platform link not found in page");
@@ -70,7 +80,7 @@ class HangsengDriver {
     }
 
     async gotoBillPaymentSection() {
-        await this.executeScript(`
+        await this.executeScriptAndCheckError(`
             var billPaymentNav = document.querySelector('#serviceNavItem-2-2');
             if (!billPaymentNav) {
                 throw new Error("Bill payment link not found in page");
@@ -82,17 +92,18 @@ class HangsengDriver {
     }
 
     async openPayBillsForm() {
-        await this.executeScript(`
+        await this.executeScriptAndCheckError(`
             var payBillsNavLink = document.querySelector('#serviceNavItem-2-2-2-1 a, #serviceNavItem-2-2-1 a');
             if (!payBillsNavLink) {
                 throw new Error("Pay bills link not found in page");
             }
             payBillsNavLink.click();
         `);
+        await this.waitForPageUpdate();
     }
 
     async selectRegisteredPayeeBill(payeeName) {
-        await this.executeScript(`
+        await this.executeScriptAndCheckError(`
             var payeeDropdown = document.querySelector('.commonForm2 .commonForm2 > tbody > tr:nth-child(2) > td:nth-child(2) > div.ui-dropDown-btn');
             if (!payeeDropdown) {
                 throw new Error("Payee dropdown not found in page");
@@ -109,10 +120,11 @@ class HangsengDriver {
             }
             filteredPayeeOptions[0].click();
         `);
+        await this.waitForPageUpdate();
     }
 
     async selectTaxBill(taxAccountNumber) {
-        await this.executeScript(`
+        await this.executeScriptAndCheckError(`
             var payeeCategoryDropdown = document.querySelector('.commonForm2 .commonForm2 > tbody > tr:nth-child(4) > td:nth-child(2) > div:nth-child(1)');
             if (!payeeCategoryDropdown) {
                 throw new Error("Payee category dropdown not found in page");
@@ -127,8 +139,8 @@ class HangsengDriver {
             }
             filteredPayeeCategoryOptions[0].click();
         `);
-        await delay(1000);
-        await this.executeScript(`
+        await this.waitForPageUpdate();
+        await this.executeScriptAndCheckError(`
             var organizationDropdown = document.querySelector('.commonForm2 .commonForm2 > tbody > tr:nth-child(5) > td:nth-child(2) > div:nth-child(1)');
             if (!organizationDropdown) {
                 throw new Error("Organization dropdown not found in page");
@@ -143,8 +155,8 @@ class HangsengDriver {
             }
             filteredOrganizationOptions[0].click();
         `);
-        await delay(2000);
-        await this.executeScript(`
+        await this.waitForPageUpdate();
+        await this.executeScriptAndCheckError(`
             var billAccountNumberInput = document.querySelector('#contentBox-middle > .commonForm2 > tbody > tr:nth-child(2) input');
             if (!billAccountNumberInput) {
                 throw new Error("Bill account number input not found in page");
@@ -165,10 +177,11 @@ class HangsengDriver {
             }
             filteredBillTypeOptions[0].click();
         `);
+        await this.waitForPageUpdate();
     }
 
     async fillAmountAndSelectAccount(payAmount, payAccount, amountRowOffset) {
-        await this.executeScript(`
+        await this.executeScriptAndCheckError(`
             var amountInput = document.querySelector('#contentBox-middle > .commonForm2 > tbody > tr:nth-child(${3 + amountRowOffset}) input');
             if (!amountInput) {
                 throw new Error("Amount input not found in page");
@@ -191,18 +204,19 @@ class HangsengDriver {
             }
             filteredDeductFromAccountOptions[0].click();
         `);
+        await this.waitForPageUpdate();
     }
     
     async proceedPayment() {
-        await this.executeScript(`
+        await this.executeScriptAndCheckError(`
             var proceedButton = document.querySelector('a#okBtn');
             if (!proceedButton) {
                 throw new Error("Proceed button not found in page");
             }
             proceedButton.click();
         `);
-        await delay(1000);
-        await this.executeScript(`
+        await this.waitForPageUpdate();
+        await this.executeScriptAndCheckError(`
             var errorHeadings = document.querySelectorAll('.errorheading');
             if (errorHeadings.length > 0) {
                 throw new Error("Error message found in page");
@@ -216,15 +230,15 @@ class HangsengDriver {
     }
 
     async confirmPayment() {
-        await this.executeScript(`
+        await this.executeScriptAndCheckError(`
             var confirmButton = document.querySelector('.btn-grn-1 a');
             if (!confirmButton) {
                 throw new Error("Confirm button not found in page");
             }
             confirmButton.click();
         `);
-        await this.delay(5000);
-        await this.executeScript(`
+        await this.waitForPageUpdate();
+        await this.executeScriptAndCheckError(`
             var paymentMessage = document.querySelector('#errorMessage span.blue');
             if (!paymentMessage || paymentMessage.innerText.length == 0) {
                 throw new Error("Transaction completed message not found in page");
