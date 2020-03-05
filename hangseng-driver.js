@@ -192,19 +192,29 @@ class HangsengDriver {
             if (!deductFromAccountDropdown) {
                 throw new Error("Deduct-from-account dropdown not found in page");
             }
-            deductFromAccountDropdown.click();
-
-            var deductFromAccountOptions = document.querySelectorAll('#contentBox-middle > .commonForm2 > tbody > tr:nth-child(${4 + amountRowOffset}) div.boxOpened td');
-            var filteredDeductFromAccountOptions = Array.from(deductFromAccountOptions)
-                .filter(o => o.innerText.includes('${payAccount}'));
-            if (filteredDeductFromAccountOptions.length == 0) {
-                throw new Error("No matched account found in deduct-from-account dropdown");
-            } else if (filteredDeductFromAccountOptions.length > 1) {
-                throw new Error("Multiple matched accounts found in deduct-from-account dropdown");
-            }
-            filteredDeductFromAccountOptions[0].click();
         `);
-        await this.waitForPageUpdate();
+
+        let selectedAccount = await this.executeScript(`
+            var deductFromAccountDropdown = document.querySelector('#contentBox-middle > .commonForm2 > tbody > tr:nth-child(${4 + amountRowOffset}) div.ui-dropDown-btn');
+            deductFromAccountDropdown.innerText
+        `);
+
+        if (!selectedAccount.includes(payAccount)) {
+            await this.executeScriptAndCheckError(`
+                deductFromAccountDropdown.click();
+
+                var deductFromAccountOptions = document.querySelectorAll('#contentBox-middle > .commonForm2 > tbody > tr:nth-child(${4 + amountRowOffset}) div.boxOpened td');
+                var filteredDeductFromAccountOptions = Array.from(deductFromAccountOptions)
+                    .filter(o => o.innerText.includes('${payAccount}'));
+                if (filteredDeductFromAccountOptions.length == 0) {
+                    throw new Error("No matched account found in deduct-from-account dropdown");
+                } else if (filteredDeductFromAccountOptions.length > 1) {
+                    throw new Error("Multiple matched accounts found in deduct-from-account dropdown");
+                }
+                filteredDeductFromAccountOptions[0].click();
+            `);
+            await this.waitForPageUpdate();
+        }
     }
     
     async proceedPayment() {
